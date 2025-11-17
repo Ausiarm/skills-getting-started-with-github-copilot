@@ -31,7 +31,12 @@ document.addEventListener("DOMContentLoaded", () => {
             <h5>Participants (${participantCount})</h5>
             ${details.participants.length > 0
               ? `<ul class="participants-list">
-                  ${details.participants.map(email => `<li>${email}</li>`).join('')}
+                  ${details.participants.map(email => `
+                    <li>
+                      <span>${email}</span>
+                      <button class="delete-btn" data-activity="${name}" data-email="${email}" title="Remove participant">✕</button>
+                    </li>
+                  `).join('')}
                 </ul>`
               : `<p class="no-participants">No participants yet</p>`
             }
@@ -45,6 +50,48 @@ document.addEventListener("DOMContentLoaded", () => {
         option.value = name;
         option.textContent = name;
         activitySelect.appendChild(option);
+      });
+
+      // Add delete button event listeners
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          const activityName = btn.dataset.activity;
+          const email = btn.dataset.email;
+
+          if (confirm(`Are you sure you want to remove ${email} from ${activityName}?`)) {
+            try {
+              const response = await fetch(
+                `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
+                {
+                  method: "DELETE",
+                }
+              );
+
+              if (response.ok) {
+                messageDiv.textContent = `Successfully removed ${email} from the activity`;
+                messageDiv.className = "message success";
+                fetchActivities(); // Reload to show updated participants
+              } else {
+                const error = await response.json();
+                messageDiv.textContent = `Error: ${error.detail}`;
+                messageDiv.className = "message error";
+              }
+
+              messageDiv.classList.remove("hidden");
+
+              // Hide message after 5 seconds
+              setTimeout(() => {
+                messageDiv.classList.add("hidden");
+              }, 5000);
+            } catch (error) {
+              messageDiv.textContent = "An error occurred. Please try again.";
+              messageDiv.className = "message error";
+              messageDiv.classList.remove("hidden");
+              console.error("Error removing participant:", error);
+            }
+          }
+        });
       });
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
